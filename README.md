@@ -60,13 +60,13 @@ Flow: plan confirmation → host list generation → per-POP confirmation →
 ```yaml
 services:
   - nsproxy
-  # - edge
+- edge
 
 pops:
   - phx1
   - tpe1
 
-command: "uptime"
+command: "dpkg -l | grep 'dp.ns'"
 concurrency: 4        # pteredactyl max concurrent executions (default: 4)
 slient: false         # true = skip all confirmations and run end-to-end
 
