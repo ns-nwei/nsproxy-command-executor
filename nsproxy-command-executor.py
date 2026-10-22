@@ -235,6 +235,33 @@ details.card summary .card-stat { color: var(--ink-2); font-size: 12px; }
 details.card summary .ok::before { content: "\\2713\\00a0"; color: var(--good); }
 details.card summary .fail::before { content: "\\2717\\00a0"; color: var(--critical); }
 details.card .card-body { margin-top: 8px; }
+.outbtn { background: var(--page); border: 1px solid var(--baseline); border-radius: 4px;
+  color: var(--ink-2); font-size: 12px; padding: 2px 10px; cursor: pointer;
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif; }
+.outbtn:hover { color: var(--ink-1); border-color: var(--ink-2); }
+.no-out { color: var(--ink-muted); font-size: 12px; }
+.tile-btn { display: flex; align-items: center; justify-content: center; }
+#toggle-out { background: var(--page); border: 1px solid var(--baseline); border-radius: 6px;
+  color: var(--ink-2); font-size: 13px; padding: 6px 14px; cursor: pointer; }
+#toggle-out:hover { color: var(--ink-1); border-color: var(--ink-2); }
+.out-inline pre { background: var(--page); border: 1px solid var(--grid); border-radius: 6px;
+  padding: 8px 10px; margin: 6px 0 0; white-space: pre-wrap; word-break: break-word;
+  font-family: ui-monospace, monospace; font-size: 12px; max-height: 400px; overflow: auto; }
+dialog { background: var(--surface); color: var(--ink-1);
+  border: 1px solid var(--border); border-radius: 8px; padding: 16px;
+  width: min(860px, 92vw); }
+dialog::backdrop { background: rgba(0, 0, 0, 0.55); }
+dialog .dlg-head { display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 8px; }
+dialog h3 { margin: 0; font-size: 14px; font-family: ui-monospace, monospace;
+  word-break: break-all; }
+dialog #dlg-close { background: none; border: none; color: var(--ink-2);
+  font-size: 18px; cursor: pointer; line-height: 1; padding: 2px 6px; }
+dialog #dlg-close:hover { color: var(--ink-1); }
+dialog pre { background: var(--page); border: 1px solid var(--grid); border-radius: 6px;
+  padding: 10px; margin: 0; white-space: pre-wrap; word-break: break-word;
+  font-family: ui-monospace, monospace; font-size: 12px;
+  max-height: 70vh; overflow: auto; }
 details pre { background: var(--page); border: 1px solid var(--grid); border-radius: 6px;
   padding: 8px 10px; margin: 6px 0 0; white-space: pre-wrap; word-break: break-word;
   font-family: ui-monospace, monospace; font-size: 12px; max-height: 400px; overflow: auto; }
@@ -303,6 +330,7 @@ def build_report(run_dir):
         return None
 
     total_hosts = total_ok = total_fail = 0
+    out_counter = [0]
     cards = []
     for rf in result_files:
         with open(rf) as f:
@@ -324,10 +352,17 @@ def build_report(run_dir):
             error = r.get("error")
             if error:
                 output += f"\n[error] {error}"
-            output_cell = ""
-            if output:
-                output_cell = (f"<details><summary>output</summary>"
-                               f"<pre>{esc(output)}</pre></details>")
+            if output.strip():
+                # Modal button + a hidden inline copy so "expand all" can
+                # reveal every output in place for side-by-side comparison
+                out_id = f"out-{out_counter[0]}"
+                out_counter[0] += 1
+                output_cell = (f"<button class='outbtn' data-out='{out_id}' "
+                               f"data-host='{esc(r.get('hostname', ''))}'>output</button>"
+                               f"<div id='{out_id}' class='out-inline' hidden>"
+                               f"<pre>{esc(output)}</pre></div>")
+            else:
+                output_cell = "<span class='no-out'>(no output)</span>"
             rows.append(
                 f"<tr><td>{esc(r.get('hostname', ''))}</td>"
                 f"<td>{status}</td>"
@@ -371,9 +406,37 @@ def build_report(run_dir):
     <div class="tile"><div class="label">Hosts</div><div class="value">{total_hosts}</div></div>
     <div class="tile"><div class="label">Success</div><div class="value">{total_ok}</div></div>
     <div class="tile"><div class="label">Failed</div><div class="value">{total_fail}</div></div>
+    <div class="tile tile-btn"><button id="toggle-out" data-mode="modal">Expand all outputs</button></div>
   </div>
   {''.join(cards)}
 </div>
+<dialog id="dlg">
+  <div class="dlg-head">
+    <h3 id="dlg-title"></h3>
+    <button id="dlg-close" aria-label="close">&times;</button>
+  </div>
+  <pre id="dlg-pre"></pre>
+</dialog>
+<script>
+const dlg = document.getElementById('dlg');
+document.querySelectorAll('.outbtn').forEach(b => b.addEventListener('click', () => {{
+  document.getElementById('dlg-title').textContent = b.dataset.host;
+  document.getElementById('dlg-pre').textContent =
+    document.getElementById(b.dataset.out).textContent;
+  dlg.showModal();
+}}));
+document.getElementById('dlg-close').addEventListener('click', () => dlg.close());
+// click on the backdrop closes the dialog
+dlg.addEventListener('click', e => {{ if (e.target === dlg) dlg.close(); }});
+// expand/collapse all outputs inline for side-by-side comparison
+const tog = document.getElementById('toggle-out');
+tog.addEventListener('click', () => {{
+  const inline = tog.dataset.mode !== 'inline';
+  document.querySelectorAll('.out-inline').forEach(d => d.hidden = !inline);
+  tog.dataset.mode = inline ? 'inline' : 'modal';
+  tog.textContent = inline ? 'Collapse all outputs' : 'Expand all outputs';
+}});
+</script>
 </body>
 </html>
 """
