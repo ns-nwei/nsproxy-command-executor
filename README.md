@@ -60,7 +60,7 @@ Flow: plan confirmation → host list generation → per-POP confirmation →
 ```yaml
 services:
   - nsproxy
-- edge
+  - edge
 
 pops:
   - phx1
