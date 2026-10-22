@@ -1,0 +1,16 @@
+services:
+  - nsproxy
+  - edge
+
+pops:
+  - pek1
+  - tpe1
+
+command: "dpkg -l | grep 'dp.ns'"
+concurrency: 4
+slient: false
+
+# Extra blacklist regex patterns on top of the built-in dangerous-command list
+# blacklist:
+#   - "apt\\s+(remove|purge)"
+#   - "systemctl\\s+stop"
